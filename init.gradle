@@ -1,0 +1,23 @@
+import org.apache.commons.math.fraction.Fraction
+
+allprojects {
+    repositories {
+        mavenLocal()
+        maven { url = uri('https://maven.aliyun.com/repository/public') }
+        maven { url = uri('https://repo.maven.apache.org/maven2/') }
+        maven { url = uri('https://maven.scijava.org/content/repositories/public/') }
+    }
+}
+
+
+initscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'org.apache.commons:commons-math:2.0'
+    }
+}
+
+// gradle --init-script init.gradle showRepos
+println Fraction.ONE_FIFTH.multiply(2)

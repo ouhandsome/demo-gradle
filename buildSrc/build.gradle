@@ -1,0 +1,6 @@
+import org.slf4j.LoggerFactory
+
+def slf4jLogger = LoggerFactory.getLogger('some-logger')
+slf4jLogger.info('An info log message logged using SLF4j')
+
+logger.info('A {} log message', 'info')

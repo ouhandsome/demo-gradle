@@ -1,0 +1,863 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+apply plugin: 'idea'
+
+idea {
+    module {
+        //if you love browsing Javadoc
+        downloadJavadoc = true
+
+        //if you love reading sources :)
+        downloadSources = true
+    }
+}
+
+idea{
+    module {
+        downloadJavadoc = true // defaults to false
+        downloadSources = true
+    }
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenLocal()
+    maven { url = uri('https://maven.aliyun.com/repository/public') }
+    maven { url = uri('https://repo.maven.apache.org/maven2/') }
+    maven { url = uri('https://maven.scijava.org/content/repositories/public/') }
+}
+
+
+dependencies {
+    implementation("commons-io:commons-io:2.6")
+    testImplementation  group: 'junit', name: 'junit', version: '4.12'
+
+
+    // Example 276. Giving a reason for choosing a certain module version in a dependency declaration 549
+    implementation('org.ow2.asm:asm:7.1') {
+        because 'we require a JDK 9 compatible bytecode generator'
+    }
+}
+
+
+//tasks.withType(JavaCompile) {
+//    options.compilerArgs += ['-Xdoclint:none', '-Xlint:none', '-nowarn']
+//}
+
+
+tasks.register('performRelease') {
+    doLast {
+        if (project.hasProperty("isCI")) {
+            println("Performing release actions")
+        } else {
+            throw new InvalidUserDataException("Cannot perform release outside of CI")
+        }
+    }
+}
+
+tasks.register('helloWorld'){
+    project.description "Handsome"
+    doLast {
+        println "Hello world!"
+//        description "Handsome"
+        println("description of project $name :"+getProject().description)
+    }
+
+}
+
+
+
+tasks.register('showRepos') {
+    doLast {
+        println "All repos:"
+        println repositories.collect { it.name }
+    }
+}
+
+tasks.register('printProps') {
+    doLast {
+//        println commandLineProjectProp
+//        println gradlePropertiesProp
+//        println systemProjectProp
+        println(System.properties)
+//        println System.properties['system']
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+// Writing Build Scripts
+// Build Script Basics
+// https://docs.gradle.org/current/userguide/tutorial_using_tasks.html
+// Projects, plugins and tasks
+//Hello world
+//Build scripts are code
+//Task dependencies
+//Flexible task registration
+//Manipulating existing tasks
+//Using Ant Tasks
+//Using methods
+//Default tasks
+//External dependencies for the build script
+//Further Reading
+/////////////////////////////////////////////////////////////////////////////////////
+
+// Authoring Gradle Builds
+// https://docs.gradle.org/current/userguide/tutorial_using_tasks.html
+// Build Script Basics  177
+// gradle -q hello
+// What does -q do?
+// Choosing a log level
+// -q or --quiet  https://docs.gradle.org/current/userguide/logging.html#logging
+//
+//QUIET and higher
+// Example 1. Your first build script
+tasks.register('hello') {
+    doLast {
+        println 'Hello world!'
+    }
+}
+
+// Example 2. Execution of a build script
+//Output of gradle -q hello
+//> gradle -q hello
+//Hello world!
+
+
+// Example 3. Using Groovy or Kotlin in Gradle’s tasks
+// gradle -q upper
+tasks.register('upper') {
+    doLast {
+        String someString = 'mY_nAmE'
+        println "Original: $someString"
+        println "Upper case: ${someString.toUpperCase()}"
+    }
+}
+// Example 4. Using Groovy or Kotlin in Gradle’s tasks
+//  gradle -q count
+tasks.register('count') {
+    doLast {
+        4.times { print "$it " }
+    }
+}
+
+// Task dependencies
+// As you probably have guessed, you can declare tasks that depend on other tasks.
+// Example 5. Declaration of task that depends on other task
+// gradle -q intro
+tasks.register('intro') {
+    dependsOn tasks.hello
+    doLast {
+        println "I'm Gradle"
+    }
+}
+
+// To add a dependency, the corresponding task does not need to exist.
+// Example 6. Lazy dependsOn - the other task does not exist (yet)
+// The dependency of taskX to taskY may be declared before taskY is defined.
+// Task dependencies are discussed in more detail in Adding dependencies to a task.https://docs.gradle.org/current/userguide/more_about_tasks.html#sec:adding_dependencies_to_tasks
+// Example 6. Lazy dependsOn - the other task does not exist (yet)
+// gradle -q taskDepX
+tasks.register('taskDepX') {
+    dependsOn 'taskDepY'
+    doLast {
+        println 'taskDepX'
+    }
+}
+tasks.register('taskDepY') {
+    doLast {
+        println 'taskDepY'
+    }
+}
+
+
+// Flexible task registration
+// The power of Groovy or Kotlin can be used for more than defining what a task does. For example, you can use it to register multiple tasks of the same type in a loop.
+// Example 7. Flexible registration of a task
+// gradle -q task1
+4.times { counter ->
+    tasks.register("task$counter") {
+        doLast {
+            println "I'm task number $counter"
+        }
+    }
+}
+
+
+// Manipulating existing tasks
+// https://docs.gradle.org/current/userguide/tutorial_using_tasks.html#sec:manipulating_existing_tasks
+// Once tasks are registered, they can be accessed via an API. For instance, you could use this to dynamically add dependencies to a task, at runtime. Ant doesn’t allow anything like this.
+// Example 8. Accessing a task via API - adding a dependency
+//  gradle -q taskMan0
+4.times { counter ->
+    tasks.register("taskMan$counter") {
+        doLast {
+            println "I'm task number $counter"
+        }
+    }
+}
+tasks.named('taskMan0') { dependsOn('taskMan2', 'taskMan3') }
+
+// Or you can add behavior to an existing task.
+// The calls doFirst and doLast can be executed multiple times.
+// They add an action to the beginning or the end of the task’s actions list.
+// When the task executes, the actions in the action list are executed in order.
+// Example 9. Accessing a task via API - adding behaviour
+// gradle -q helloAdd
+tasks.register('helloAdd') {
+    doLast {
+        println 'helloAdd Earth'
+    }
+}
+tasks.named('helloAdd') {
+    doFirst {
+        println 'helloAdd Venus'
+    }
+}
+tasks.named('helloAdd') {
+    doLast {
+        println 'helloAdd Mars'
+    }
+}
+tasks.named('helloAdd') {
+    doLast {
+        println 'helloAdd Jupiter'
+    }
+}
+
+
+
+
+// Using Ant Tasks
+// https://docs.gradle.org/current/userguide/tutorial_using_tasks.html#sec:using_ant_tasks_tutorial
+// pass
+
+// Using methods
+// https://docs.gradle.org/current/userguide/tutorial_using_tasks.html#sec:using_methods
+// Gradle scales in how you can organize your build logic. The first level of organizing your build logic for the example above, is extracting a method.
+// Later you will see that such methods can be shared among subprojects in multi-project builds. If your build logic becomes more complex, Gradle offers you other very convenient ways to organize it.
+// We have devoted a whole chapter to this. See Organizing Gradle Projects. https://docs.gradle.org/current/userguide/organizing_gradle_projects.html#organizing_gradle_projects
+// Example 11. Using methods to organize your build logic
+// gradle -q loadfile
+
+tasks.register('loadfile') {
+    doLast {
+        // fileList 调用下面的方法  File[] fileList(String dir)
+        fileList('./gradle/wrapper').each { File file ->
+            println "I'm fond of $file.name"
+        }
+    }
+}
+
+File[] fileList(String dir) {
+    file(dir).listFiles({file -> file.isFile() } as FileFilter).sort()
+}
+
+
+// Default tasks
+// https://docs.gradle.org/current/userguide/tutorial_using_tasks.html#sec:default_tasks
+// Gradle allows you to define one or more default tasks that are executed if no other tasks are specified.
+// This is equivalent to running gradle clean run. In a multi-project build every subproject can have its own specific default tasks.
+// If a subproject does not specify default tasks, the default tasks of the parent project are used (if defined).
+// Example 12. Defining a default task
+//  gradle -q
+defaultTasks 'cleanDefault', 'runDefault'
+
+tasks.register('cleanDefault') {
+    doLast {
+        println 'Default Cleaning!'
+    }
+}
+
+tasks.register('runDefault') {
+    doLast {
+        println 'Default Running!'
+    }
+}
+
+tasks.register('otherDefault') {
+    doLast {
+        println "I'm not a default task!"
+    }
+}
+
+// Authoring Gradle Builds
+// Example 48. Defining a default task 187
+//defaultTasks 'clean', 'run'
+//tasks.named('clean') {
+//    doLast {
+//        println 'Default Cleaning!'
+//    }
+//}
+//
+////tasks.register('run1') {
+//tasks.named('run') {
+//    doLast {
+//        println 'Default Running!'
+//    }
+//}
+//tasks.register('other') {
+//    doLast {
+//        println "I'm not a default task!"
+//    }
+//}
+
+
+
+
+// External dependencies for the build script
+// https://docs.gradle.org/current/userguide/tutorial_using_tasks.html#sec:build_script_external_dependencies
+// Instead of manipulating the script classpath directly, it is recommended to apply plugins that come with their own classpath. For custom build logic, the recommendation is to use a custom plugin.
+// If your build script needs to use external libraries, you can add them to the script’s classpath in the build script itself. You do this using the buildscript() method, passing in a block which declares the build script classpath.
+// Example 13. Declaring external dependencies for the build script
+// Note: all buildscript {} blocks must appear before any plugins {} blocks in the script
+// gradle -q encode
+//import org.apache.commons.codec.binary.Base64
+//
+//buildscript {
+//    repositories {
+//        mavenCentral()
+//    }
+//    dependencies {
+//        classpath group: 'commons-codec', name: 'commons-codec', version: '1.2'
+//    }
+//}
+//
+//tasks.register('encode') {
+//    doLast {
+//        def byte[] encodedString = new Base64().encode('hello world\n'.getBytes())
+//        println new String(encodedString)
+//    }
+//}
+
+// end  Writing Build Scripts
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+// Learning More About Build Scripts
+// Writing Build Scripts
+// https://docs.gradle.org/current/userguide/writing_build_scripts.html
+// This chapter looks at some of the details of writing a build script.
+// Contents
+//The Gradle build language
+//The Project API
+//The script API
+//Declaring variables
+//Configuring arbitrary objects
+//Configuring arbitrary objects using an external script
+//Some Groovy basics
+//Default imports
+//////////////////////////////////////////////////////////////////////////////
+
+
+
+// The Project API
+// https://docs.gradle.org/current/userguide/writing_build_scripts.html#sec:project_api
+// Build scripts describe your build by configuring projects. A project is an abstract concept, but you typically map a Gradle project to a software component that needs to be built, like a library or an application. Each build script you have is associated with an object of type Project and as the build script executes, it configures this Project.
+//
+// In fact, almost all top-level properties and blocks in a build script are part of the Project API. To demonstrate, take a look at this example build script that prints the name of its project, which is accessed via the Project.name property:
+// Example 1. Accessing property of the Project object
+// gradle -q check
+println name
+println project.name
+
+
+
+// https://docs.gradle.org/current/userguide/writing_build_scripts.html#sec:standard_project_properties
+// Table 1. Project Properties
+// Name	      Type	  Default Value
+// project    Project The Project instance
+// path       String  The absolute path of the project.
+// projectDir File    The directory containing the build script.
+// buildDir   File    projectDir/build
+// ...
+
+// Script with other targets
+//The build scripts described here target Project objects. There are also settings scripts and init scripts that respectively target Settings and Gradle objects.
+// https://docs.gradle.org/current/userguide/build_lifecycle.html#sec:settings_file
+// https://docs.gradle.org/current/userguide/init_scripts.html#init_scripts
+// https://docs.gradle.org/current/dsl/org.gradle.api.initialization.Settings.html
+// https://docs.gradle.org/current/dsl/org.gradle.api.invocation.Gradle.html
+
+//The script API
+// https://docs.gradle.org/current/userguide/writing_build_scripts.html#sec:the_script_api
+//When Gradle executes a Groovy build script (.gradle), it compiles the script into a class which implements Script. This means that all of the properties and methods declared by the Script interface are available in your script.
+//When Gradle executes a Kotlin build script (.gradle.kts), it compiles the script into a subclass of KotlinBuildScript. This means that all of the visible properties and functions declared by the KotlinBuildScript type are available in your script. Also see the KotlinSettingsScript and KotlinInitScript types respectively for settings scripts and init scripts.
+//
+//Declaring variables
+// https://docs.gradle.org/current/userguide/writing_build_scripts.html#sec:declaring_variables
+//There are two kinds of variables that can be declared in a build script: local variables and extra properties.
+//
+//Local variables
+//Local variables are declared with the def keyword. They are only visible in the scope where they have been declared. Local variables are a feature of the underlying Groovy language.
+
+// Extra properties
+// https://docs.gradle.org/current/userguide/writing_build_scripts.html#sec:extra_properties
+//All enhanced objects in Gradle’s domain model can hold extra user-defined properties. This includes, but is not limited to, projects, tasks, and source sets.
+//
+//Extra properties can be added, read and set via the owning object’s ext property. Alternatively, an ext block can be used to add multiple properties at once.
+
+//In this example, an ext block adds two extra properties to the project object. Additionally, a property named purpose is added to each source set by setting ext.purpose to null (null is a permissible value). Once the properties have been added, they can be read and set like predefined properties.
+//
+//By requiring special syntax for adding a property, Gradle can fail fast when an attempt is made to set a (predefined or extra) property but the property is misspelled or does not exist. Extra properties can be accessed from anywhere their owning object can be accessed, giving them a wider scope than local variables. Extra properties on a project are visible from its subprojects.
+//
+//For further details on extra properties and their API, see the ExtraPropertiesExtension class in the API documentation.
+
+
+def declaredVar = 'declaredVar'
+
+ext {
+    declaredVarVersion = "1.0.0.RELEASE"
+    emailNotification = "build@master.org"
+}
+
+sourceSets.all { ext.purpose = null }
+
+sourceSets {
+    main {
+        purpose = "production"
+    }
+    test {
+        purpose = "test"
+    }
+    plugin {
+        purpose = "production"
+    }
+}
+
+tasks.register('declaredVariables') {
+    doLast{
+        println declaredVar
+        println declaredVarVersion
+        sourceSets.matching { it.purpose == "production" }.each { println it.name }
+    }
+}
+
+//////////////////////////////////////////////////////////////
+// Working With Files
+// https://docs.gradle.org/current/userguide/working_with_files.html
+//Contents
+//Copying a single file
+//Copying multiple files
+//Copying directory hierarchies
+//Creating archives (zip, tar, etc.)
+//Unpacking archives
+//Creating "uber" or "fat" JARs
+//Creating directories
+//Moving files and directories
+//Renaming files on copy
+//Deleting files and directories
+//File paths in depth
+//File copying in depth
+//Archive creation in depth
+//////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////
+// Logging
+// https://docs.gradle.org/current/userguide/logging.html
+//////////////////////////////////////////////////////////////
+
+
+//Choosing a log level
+//You can use the command line switches shown in Log level command-line options to choose different log levels. You can also configure the log level using gradle.properties, see Gradle properties. In Stacktrace command-line options you find the command line switches which affect stacktrace logging.
+// no logging options     LIFECYCLE and higher
+// -q or --quiet
+// -w or --warn
+// -i or --info
+// -d or --debug
+
+// https://docs.gradle.org/current/userguide/logging.html#stacktraces
+// Stacktrace command-line options
+// -s or --stacktrace
+// -S or --full-stacktrace
+
+// Writing your own log messages
+// https://docs.gradle.org/current/userguide/logging.html#sec:sending_your_own_log_messages
+logger.quiet('An info log message which is always logged.')
+logger.error('An error log message.')
+logger.warn('A warning log message.')
+logger.lifecycle('A lifecycle info log message.')
+logger.info('An info log message.')
+logger.debug('A debug log message.')
+logger.trace('A trace log message.') // Gradle never logs TRACE level logs
+
+
+//You can also hook into Gradle’s logging system from within other classes used in the build (classes from the buildSrc directory for example).
+// Simply use an SLF4J logger. You can use this logger the same way as you use the provided logger in the build script.
+// Example 4. Using SLF4J to write log messages
+
+import org.slf4j.LoggerFactory
+def slf4jLogger = LoggerFactory.getLogger('some-logger')
+slf4jLogger.info('An info log message logged using SLF4j')
+
+
+// Example 55. Accessing tasks by path 197
+println tasks.getByPath('hello').path
+println tasks.getByPath(':hello').path
+//println tasks.getByPath('DemoGradle:hello').path
+//println tasks.getByPath(':DemoGradle:hello').path
+
+
+// Example 65. Adding a 'must run after' task ordering 210
+def taskX = tasks.register('taskX') {
+    doLast {
+        println 'taskX'
+    }
+}
+def taskY = tasks.register('taskY') {
+    doLast {
+        println 'taskY'
+    }
+}
+taskY.configure {
+    mustRunAfter taskX
+}
+
+
+// Example 96. Dependency on rule based tasks 262
+tasks.addRule("Pattern: ping<ID>") { String taskName ->
+    if (taskName.startsWith("ping")) {
+        task(taskName) {
+            doLast {
+                println "Pinging: " + (taskName - 'ping')
+            }
+        }
+    }
+}
+tasks.register('groupPing') {
+    dependsOn 'pingServer1', 'pingServer2'
+}
+
+// Example 98. Task finalizer for a failing task
+
+def taskXfinalizer = tasks.register('taskXfinalizer') {
+    doLast {
+        println 'taskXfinalizer'
+        throw new RuntimeException()
+    }
+}
+def taskYfinalizer = tasks.register('taskYfinalizer') {
+    doLast {
+        println 'taskYfinalizer'
+    }
+}
+taskXfinalizer.configure { finalizedBy taskYfinalizer }
+
+
+/////////////////////////////////
+// Writing Build Scripts
+/////////////////////////////////
+println "\nWriting Build Scripts"
+println name
+println project.name
+println project.path
+println project.projectDir
+println project.buildDir
+description = "Handsome Test"
+println(project.description)
+
+
+// Example 104. Groovy JDK methods 275
+configurations.runtimeClasspath.each { File f -> println f }
+
+
+
+// Example 122. Creating a Java uber or fat JAR  294
+// Example 450. Creating a Java uber or fat JAR 844
+//plugins {
+//    id 'java'
+//}
+version = '1.0.0'
+tasks.register('uberJar', Jar) {
+    archiveClassifier = 'uber'
+    from sourceSets.main.output
+    dependsOn configurations.runtimeClasspath
+    from {
+        configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }
+                .collect { zipTree(it) }
+    }
+}
+
+
+// Example 133. Implementing a file collection 306
+tasks.register('list') {
+    println "\n --list Task--"
+    doLast {
+        File srcDir
+        // Create a file collection using a closure
+        FileCollection collection = layout.files { srcDir.listFiles() }
+        srcDir = file('src')
+        println "Contents of $srcDir.name"
+        collection.collect { relativePath(it) }.sort().each { println it }
+        srcDir = file('src2')
+        println "Contents of $srcDir.name"
+        collection.collect { relativePath(it) }.sort().each { println it }
+    }
+}
+
+// Java & Other JVM Projects
+// Example 447. Setting Java compiler options 838
+compileJava {
+    options.incremental = true
+    options.fork = true
+    options.failOnError = false
+}
+
+
+/*
+Targeting a specific Java version
+
+By default, Gradle will compile Java code to the language level of the JVM running Gradle. With the
+usage of Java toolchains, you can break that link by making sure a given Java version, defined by
+the build, is used for compilation, execution and documentation. It is however possible to override
+some compiler and execution options at the task level.
+
+Since version 9, the Java compiler can be configured to produce bytecode for an older Java version
+while making sure the code does not use any APIs from a more recent version. Gradle now supports
+this release flag on CompileOptions directly for Java compilation. This option takes precedence over
+the properties described below.
+
+sourceCompatibility
+Defines which language version of Java your source files should be treated as.
+
+targetCompatibility
+Defines the minimum JVM version your code should run on, i.e. it determines the version of byte
+code the compiler generates.
+
+ */
+// Example 448. Setting Java release flag 839
+//* What went wrong:
+//Execution failed for task ':compileJava'.
+//> 无效的标记: --release
+//compileJava {
+//    options.release = 8
+//}
+
+
+// Example 449. Configure a project to publish Javadoc and sources 843
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+println("== classesDirs: "+ sourceSets.main.output.classesDirs.getAsPath())
+
+
+// Modifying the JAR manifest 845
+/**
+ * Modifying the JAR manifest 845
+ Each instance of the Jar, War and Ear tasks has a manifest property that allows you to customize the
+ MANIFEST.MF file that goes into the corresponding archive. The following example demonstrates
+ how to set attributes in the JAR’s manifest:
+ */
+jar {
+    manifest {
+        attributes("Implementation-Title": "Gradle",
+                "Implementation-Version": archiveVersion)
+    }
+}
+
+
+/**
+ * See Manifest for the configuration options it provides.
+ You can also create standalone instances of Manifest. One reason for doing so is to share manifest
+ information between JARs. The following example demonstrates how to share common attributes
+ between JARs:
+ */
+ext.sharedManifest = manifest {
+    attributes("Implementation-Title": "Gradle",
+            "Implementation-Version": version)
+}
+tasks.register('fooJar', Jar) {
+    manifest = project.manifest {
+        from sharedManifest
+    }
+}
+
+/**
+ * Extentioning Gradle
+ * Writing a simple task class
+ To implement a custom task class, you extend DefaultTask.
+
+ * Example 503. A hello world task 968
+ */
+abstract class GreetingTask extends DefaultTask {
+    @TaskAction
+    def greet() {
+        println 'hello from GreetingTask'
+    }
+}
+// Create a task using the task type
+tasks.register('helloTask', GreetingTask)
+
+
+/**
+ * Building JVM applications 1112
+ * To use the application plugin, include the following in your build script:
+ *
+ plugins {
+    id 'application'
+ }
+ The only mandatory configuration for the plugin is the specification of the main class (i.e. entry
+ point) of the application.
+
+ Example 570. Configure the application main class 1112
+ */
+application {
+    mainClass = 'org.gradle.sample.Main'
+}
+
+println '\n\nGradle生命周期及其监听 ...'
+
+// Gradle生命周期及其监听
+//this.gradle.addListener()
+/**
+ * 配置阶段开始前回调监听
+ */
+this.beforeEvaluate {
+    println '配置阶段之前...'
+}
+
+/**
+ * 配置阶段完成后回调监听
+ */
+this.afterEvaluate {
+    println '配置阶段完成...\n'
+}
+
+/**
+ * gradle执行完毕的回调监听
+ */
+this.gradle.buildFinished {
+    println 'gradle执行完毕...'
+}
+
+//
+//this.gradle.addBuildListener(new BuildListener() {
+//    void beforeSettings(Settings settings) {
+//        println 'beforeSettings...'
+//    }
+//
+//    @Override
+//    void settingsEvaluated(Settings settings) {
+//        println 'settingsEvaluated...'
+//    }
+//
+//    @Override
+//    void projectsLoaded(Gradle gradle) {
+//        println 'projectsLoaded...'
+//    }
+//
+//    @Override
+//    void projectsEvaluated(Gradle gradle) {
+//        println 'projectsEvaluated...'
+//    }
+//
+//    @Override
+//    void buildFinished(BuildResult result) {
+//        println 'buildFinished...'
+//    }
+//})
+
+// 执行顺序输出
+
+import java.util.concurrent.TimeUnit
+// Log timings per task.
+class TimingsListener implements TaskExecutionListener, BuildListener {
+    private long startTime
+    private timings = []
+
+    @Override
+    void beforeExecute(Task task) {
+        startTime = System.nanoTime()
+    }
+
+    @Override
+    void afterExecute(Task task, TaskState taskState) {
+        def ms = TimeUnit.MILLISECONDS.convert(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
+        timings.add([ms, task.path])
+        task.project.logger.warn "${task.path} took ${ms}ms"
+    }
+
+    @Override
+    void buildFinished(BuildResult result) {
+        println "Task timings:"
+        for (timing in timings) {
+            printf "%7sms  %s\n", timing
+//            if (timing[0] >= 50) {
+//                printf "%7sms  %s\n", timing
+//            }
+        }
+    }
+
+    void buildStarted(Settings settings) {}
+
+    @Override
+    void projectsEvaluated(Gradle gradle) {}
+
+    @Override
+    void projectsLoaded(Gradle gradle) {}
+
+    @Override
+    void settingsEvaluated(Settings settings) {}
+}
+gradle.addListener new TimingsListener()
+
+
+
+//// 时间耗时排序
+//import java.util.concurrent.TimeUnit
+//// Log timings per task.
+//class TimingsListener implements TaskExecutionListener, BuildListener {
+//    private long startTime
+//    private timings = []
+//
+//    @Override
+//    void beforeExecute(Task task) {
+//        startTime = System.nanoTime()
+//    }
+//
+//    @Override
+//    void afterExecute(Task task, TaskState taskState) {
+//        def ms = TimeUnit.MILLISECONDS.convert(System.nanoTime() - startTime, TimeUnit.NANOSECONDS)
+//        timings.add(new Tuple2<Integer, String>(ms, task.path))
+//        task.project.logger.warn "${task.path} took ${ms}ms"
+//    }
+//
+//    @Override
+//    void buildFinished(BuildResult result) {
+//        println "Task timings:"
+//        def tmp = timings.toSorted(new Comparator<Tuple2<Integer, String>>() {
+//            @Override
+//            int compare(Tuple2<Integer, String> o, Tuple2<Integer, String> t1) {
+//                return o.first - t1.first
+//            }
+//        })
+//        println "Task timings:"
+//        for (timing in tmp) {
+//            printf "%ss  %s\n", timing.first / 1000, timing.second
+////            if (timing.first >= 1000) {
+////                printf "%ss  %s\n", timing.first / 1000, timing.second
+////            }
+//        }
+//    }
+//
+//    void buildStarted(Settings settings) {}
+//
+//    @Override
+//    void projectsEvaluated(Gradle gradle) {}
+//
+//    @Override
+//    void projectsLoaded(Gradle gradle) {}
+//
+//    @Override
+//    void settingsEvaluated(Settings settings) {}
+//}
+//
+//gradle.addListener new TimingsListener()
